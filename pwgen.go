@@ -12,12 +12,7 @@ import (
     "code.google.com/p/gopass"
 )
 
-type pwList map[string]*pwInfo 
-
-struct pwInfo {
-    alpLength string
-    alphabet string
-}
+type pwList map[string]string
 
 func main() {
     setPw := flag.Bool("s", false, "Set/reset master password")
@@ -47,18 +42,17 @@ func main() {
         }
         fmt.Println(pwOut)
     } else {
-        info, err := getInfo(siteName)
-        if err != nil {
-            fmt.Println(err)
-            return
-        }
-        err := addSiteInfo(siteName, info)
+        fmt.Printf("Enter u, n, s depending on password requirements: ")
+        var alpChoice string
+        fmt.Scanf("%s\n", alpChoice)
+
+        err := addSiteInfo(pwFileName, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
             return
         }
 
-        pwOut, err := genPw(master, siteName, info)
+        pwOut, err := genPw(master, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
             return
@@ -84,7 +78,7 @@ func getPwDb(pwFileName string) (pwList, string, error) {
     }
     defer pwFile.Close()
 
-    pws := make(map[string]*pwInfo)
+    pws := make(map[string]string)
 
     scan := bufio.NewScanner(pwFile)
     scan.Scan()
@@ -104,11 +98,8 @@ func getPwDb(pwFileName string) (pwList, string, error) {
 
     for scan.Scan() {
         line := strings.Split(scan.Text(), " ")
-        info := new(pwInfo)
-        info.alpLength := int(line[1])
-        info.alphabet := line[2]
 
-        pws[line[0]] = info
+        pws[line[0]] = line[1]
     }
     
     return pws, mpw, nil
@@ -135,5 +126,28 @@ func newMasterPw(pwFileName) (pwList, string, error) {
     pwId := hex.encodeToString(pwHash[:8])
     f.WriteString(pwId + "\n")
 
-    return make(map[string]*pwInfo), masterPw, nil
+    return make(map[string]string), masterPw, nil
+}
+
+func addSiteInfo(pwFileName, siteName, info string) error {
+    if _, err := os.Stat(pwFileName); os.IsNotExist(err) {
+        return errors.New("File does not exist: uhoh")
+    }
+
+    f, err := os.Open(pwFileName)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
+
+    err := f.Seek(0, 2)
+    if err != nil {
+        return err
+    }
+    err := f.WriteString(siteName + info + "\n")
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
