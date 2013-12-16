@@ -4,7 +4,7 @@ import (
     "fmt"
     "flag"
     "os"
-    "crypto/sha512"
+    "crypto/sha256"
     "encoding/hex"
     "encoding/base64"
     "errors"
@@ -34,7 +34,7 @@ func main() {
 
     var siteName string
     fmt.Print("Enter site name: ")
-    fmt.Scanf("%s\n", siteName)
+    fmt.Scanf("%s", &siteName)
 
     if info := pws[siteName]; info != "" {
         pwOut, err := genPw(master, siteName, info)
@@ -46,7 +46,7 @@ func main() {
     } else {
         fmt.Printf("Enter u, n, s depending on password requirements: ")
         var alpChoice string
-        fmt.Scanf("%s\n", alpChoice)
+        fmt.Scanf("%s", &alpChoice)
 
         err := addSiteInfo(*pwFileName, siteName, alpChoice)
         if err != nil {
@@ -90,7 +90,7 @@ func getPwDb(pwFileName string) (pwList, string, error) {
     var mpw string
     for {
         pw, _ := gopass.GetPass("Enter master password: ")
-        pwHash := sha512.Sum512([]byte(pw))
+        pwHash := sha256.Sum256([]byte(pw))
         pwId := hex.EncodeToString(pwHash[:8])
         if pwId == masterPwHash {
             mpw = pw
@@ -124,7 +124,7 @@ func newMasterPw(pwFileName string) (pwList, string, error) {
         }
     }
 
-    pwHash := sha512.Sum512([]byte(masterPw))
+    pwHash := sha256.Sum256([]byte(masterPw))
     pwId := hex.EncodeToString(pwHash[:8])
     f.WriteString(pwId + "\n")
 
@@ -136,7 +136,7 @@ func addSiteInfo(pwFileName, siteName, info string) error {
         return errors.New("File does not exist: uhoh")
     }
 
-    f, err := os.Open(pwFileName)
+    f, err := os.OpenFile(pwFileName, os.O_RDWR|os.O_APPEND, 0666)
     if err != nil {
         return err
     }
@@ -146,7 +146,7 @@ func addSiteInfo(pwFileName, siteName, info string) error {
     if err != nil {
         return err
     }
-    _, err = f.WriteString(siteName + info + "\n")
+    _, err = f.WriteString(siteName + " " + info + "\n")
     if err != nil {
         return err
     }
@@ -160,32 +160,30 @@ func genPw(master, siteName, alphabet string) (string, error) {
     }
     encodeString := ""
 
-    if strings.Contains("u", alphabet) {
+    if strings.Contains(alphabet, "u") {
         encodeString += "QWERTYUIOPASDFGHJKLZXCVBNM"
     }
-    if strings.Contains("n", alphabet) {
+    if strings.Contains(alphabet, "n") {
         encodeString += "1234567890"
     }
-    if strings.Contains("s", alphabet) {
+    if strings.Contains(alphabet, "s") {
         encodeString += "!@#$%^&*()~`{}[];:<>,.?/"
     }
     encodeString += genLowers(64 - len(encodeString))
 
     encoder := base64.NewEncoding(encodeString)
 
-    c1 := sha512.Sum512([]byte(master + siteName))
-    c2 := sha512.Sum512([]byte(siteName + master))
+    c1 := sha256.Sum256([]byte(master + siteName))
 
-    s1 := encoder.EncodeToString(c1[:])
-    s2 := encoder.EncodeToString(c2[:])
+    s1 := encoder.EncodeToString(c1[:12])
 
-    return s1 + s2, nil
+    return s1, nil
 }
 
 func genLowers(length int) string {
     newS := make([]byte, length, length)
     for i := 0; i < length; i++ {
-        newS[i] = byte(i % 26 + length)
+        newS[i] = byte(i % 26 + 97)
     }
     return string(newS)
 }
