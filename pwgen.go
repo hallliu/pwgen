@@ -9,6 +9,7 @@ import (
     "errors"
     "bufio"
     "strings"
+    "regexp"
     "code.google.com/p/gopass"
 )
 
@@ -150,4 +151,36 @@ func addSiteInfo(pwFileName, siteName, info string) error {
     }
 
     return nil
+}
+
+func genPw(master, siteName, alphabet string) (string, error) {
+    if m, _ := regexp.MatchString("[^uns]+", alphabet); m {
+        return nil, errors.New(fmt.Sprintf("Alphabet string %s makes no sense", alphabet))
+    }
+    encodeString := ""
+
+    if strings.Contains("u", alphabet) {
+        encodeString += "QWERTYUIOPASDFGHJKLZXCVBNM"
+    }
+    if strings.Contains("n", alphabet) {
+        encodeString += "1234567890"
+    }
+    if strings.Contains("s", alphabet) {
+        encodeString += "!@#$%^&*()~`{}[];:<>,.?/"
+    }
+    encodeString += genLowers(64 - len(encodeString))
+
+    encoder := base64.NewEncoder(encodeString)
+
+    s1 = encoder.Encode(sha512.Sum512([]byte(master + siteName)))
+    s2 = encoder.Encode(sha512.Sum512([]byte(siteName + master)))
+
+    return s1 + s2
+}
+
+func genLowers(length int) {
+    newS := new([]byte, length, length)
+    for i := range(length) {
+        newS[i] = byte(i % 26 + length)
+    }
 }
