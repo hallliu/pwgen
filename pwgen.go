@@ -29,7 +29,44 @@ func main() {
         return
     }
 
+    pws, master, err := getPwDb(pwFileName)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
 
+    var siteName string
+    fmt.Print("Enter site name: ")
+    fmt.Scanf("%s\n", siteName)
+
+    if info := pws[siteName]; info != nil {
+        pwOut, err := genPw(master, siteName, info)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        fmt.Println(pwOut)
+    } else {
+        info, err := getInfo(siteName)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        err := addSiteInfo(siteName, info)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+
+        pwOut, err := genPw(master, siteName, info)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+
+        fmt.Println(pwOut)
+        return
+    }
 }
 
 func getPwDb(pwFileName string) (pwList, string, error) {
