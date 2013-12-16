@@ -6,6 +6,7 @@ import (
     "os"
     "crypto/sha512"
     "encoding/hex"
+    "encoding/base64"
     "errors"
     "bufio"
     "strings"
@@ -20,12 +21,12 @@ func main() {
     defaultPath := os.Getenv("HOME") + "/.pwdb"
     pwFileName := flag.String("f", defaultPath, "Password database file, default ~/.pwdb")
 
-    if setPw {
-        newMasterPw()
+    if *setPw {
+        newMasterPw(*pwFileName)
         return
     }
 
-    pws, master, err := getPwDb(pwFileName)
+    pws, master, err := getPwDb(*pwFileName)
     if err != nil {
         fmt.Println(err)
         return
@@ -35,7 +36,7 @@ func main() {
     fmt.Print("Enter site name: ")
     fmt.Scanf("%s\n", siteName)
 
-    if info := pws[siteName]; info != nil {
+    if info := pws[siteName]; info != "" {
         pwOut, err := genPw(master, siteName, info)
         if err != nil {
             fmt.Println(err)
@@ -47,7 +48,7 @@ func main() {
         var alpChoice string
         fmt.Scanf("%s\n", alpChoice)
 
-        err := addSiteInfo(pwFileName, siteName, alpChoice)
+        err := addSiteInfo(*pwFileName, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
             return
@@ -68,14 +69,14 @@ func getPwDb(pwFileName string) (pwList, string, error) {
     if _, err := os.Stat(pwFileName); os.IsNotExist(err) {
         pws, mpw, err := newMasterPw(pwFileName)
         if err != nil {
-            return nil, nil, err
+            return nil, "", err
         }
         return pws, mpw, nil
     }
 
     pwFile, err := os.Open(pwFileName)
     if err != nil {
-        return nil, errors.New(fmt.Sprintf("Error opening %s\n", pwFileName))
+        return nil, "", errors.New(fmt.Sprintf("Error opening %s\n", pwFileName))
     }
     defer pwFile.Close()
 
@@ -90,7 +91,7 @@ func getPwDb(pwFileName string) (pwList, string, error) {
     for {
         pw, _ := gopass.GetPass("Enter master password: ")
         pwHash := sha512.Sum512([]byte(pw))
-        pwId := hex.encodeToString(pwHash[:8])
+        pwId := hex.EncodeToString(pwHash[:8])
         if pwId == masterPwHash {
             mpw = pw
             break
@@ -106,10 +107,10 @@ func getPwDb(pwFileName string) (pwList, string, error) {
     return pws, mpw, nil
 }
 
-func newMasterPw(pwFileName) (pwList, string, error) {
+func newMasterPw(pwFileName string) (pwList, string, error) {
     f, err := os.Create(pwFileName)
     if err != nil {
-        return nil, nil, err
+        return nil, "", err
     }
     defer f.Close()
 
@@ -124,7 +125,7 @@ func newMasterPw(pwFileName) (pwList, string, error) {
     }
 
     pwHash := sha512.Sum512([]byte(masterPw))
-    pwId := hex.encodeToString(pwHash[:8])
+    pwId := hex.EncodeToString(pwHash[:8])
     f.WriteString(pwId + "\n")
 
     return make(map[string]string), masterPw, nil
@@ -141,11 +142,11 @@ func addSiteInfo(pwFileName, siteName, info string) error {
     }
     defer f.Close()
 
-    err := f.Seek(0, 2)
+    _, err = f.Seek(0, 2)
     if err != nil {
         return err
     }
-    err := f.WriteString(siteName + info + "\n")
+    _, err = f.WriteString(siteName + info + "\n")
     if err != nil {
         return err
     }
@@ -155,7 +156,7 @@ func addSiteInfo(pwFileName, siteName, info string) error {
 
 func genPw(master, siteName, alphabet string) (string, error) {
     if m, _ := regexp.MatchString("[^uns]+", alphabet); m {
-        return nil, errors.New(fmt.Sprintf("Alphabet string %s makes no sense", alphabet))
+        return "", errors.New(fmt.Sprintf("Alphabet string %s makes no sense", alphabet))
     }
     encodeString := ""
 
@@ -170,17 +171,21 @@ func genPw(master, siteName, alphabet string) (string, error) {
     }
     encodeString += genLowers(64 - len(encodeString))
 
-    encoder := base64.NewEncoder(encodeString)
+    encoder := base64.NewEncoding(encodeString)
 
-    s1 = encoder.Encode(sha512.Sum512([]byte(master + siteName)))
-    s2 = encoder.Encode(sha512.Sum512([]byte(siteName + master)))
+    c1 := sha512.Sum512([]byte(master + siteName))
+    c2 := sha512.Sum512([]byte(siteName + master))
 
-    return s1 + s2
+    s1 := encoder.EncodeToString(c1[:])
+    s2 := encoder.EncodeToString(c2[:])
+
+    return s1 + s2, nil
 }
 
-func genLowers(length int) {
-    newS := new([]byte, length, length)
-    for i := range(length) {
+func genLowers(length int) string {
+    newS := make([]byte, length, length)
+    for i := 0; i < length; i++ {
         newS[i] = byte(i % 26 + length)
     }
+    return string(newS)
 }
