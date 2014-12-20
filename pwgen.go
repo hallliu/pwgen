@@ -31,16 +31,23 @@ func main() {
         fmt.Println(err)
         return
     }
+    
+    for genPwSingleSite(pws, master, *pwFileName) {}
+}
 
+func genPwSingleSite(pws pwList, master, pwFileName string) bool {
     var siteName string
     fmt.Print("Enter site name: ")
     fmt.Scanf("%s", &siteName)
+    if len(siteName) == 0 {
+        return false
+    }
 
-    if info := pws[siteName]; info != "" {
+    if info, ok := pws[siteName]; ok {
         pwOut, err := genPw(master, siteName, info)
         if err != nil {
             fmt.Println(err)
-            return
+            return false
         }
         fmt.Println(pwOut)
     } else {
@@ -48,22 +55,23 @@ func main() {
         var alpChoice string
         fmt.Scanf("%s", &alpChoice)
 
-        err := addSiteInfo(*pwFileName, siteName, alpChoice)
+        err := addSiteInfo(pwFileName, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
-            return
+            return false
         }
 
         pwOut, err := genPw(master, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
-            return
+            return false
         }
 
         fmt.Println(pwOut)
-        return
     }
+    return true
 }
+
 
 func getPwDb(pwFileName string) (pwList, string, error) {
     if _, err := os.Stat(pwFileName); os.IsNotExist(err) {
