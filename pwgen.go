@@ -43,14 +43,26 @@ func genPwSingleSite(pws pwList, master, pwFileName string) bool {
         return false
     }
 
-    if info, ok := pws[siteName]; ok {
+    if siteName[0] == '?' {
+        matchingSites := make([]string, 1)
+        for k, _ := range pws {
+            if strings.Contains(k, siteName[1:]) {
+                matchingSites = append(matchingSites, k)
+            }
+        }
+        fmt.Printf("Matching sites:\n%s\n", strings.Join(matchingSites, "\n"))
+    } else if info, ok := pws[siteName]; ok {
         pwOut, err := genPw(master, siteName, info)
         if err != nil {
             fmt.Println(err)
-            return false
+            return true 
         }
         fmt.Println(pwOut)
     } else {
+        if !confirmSiteAdd(siteName) {
+            return true 
+        }
+
         fmt.Printf("Enter u, n, s depending on password requirements: ")
         var alpChoice string
         fmt.Scanf("%s", &alpChoice)
@@ -58,13 +70,13 @@ func genPwSingleSite(pws pwList, master, pwFileName string) bool {
         err := addSiteInfo(pwFileName, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
-            return false
+            return true
         }
 
         pwOut, err := genPw(master, siteName, alpChoice)
         if err != nil {
             fmt.Println(err)
-            return false
+            return true
         }
 
         fmt.Println(pwOut)
@@ -72,6 +84,12 @@ func genPwSingleSite(pws pwList, master, pwFileName string) bool {
     return true
 }
 
+func confirmSiteAdd(siteName string) bool {
+    fmt.Printf("Site %s not recognized. Add? (y/N) ", siteName)
+    var choice string
+    fmt.Scanf("%s", &choice)
+    return choice == "y"
+}
 
 func getPwDb(pwFileName string) (pwList, string, error) {
     if _, err := os.Stat(pwFileName); os.IsNotExist(err) {
