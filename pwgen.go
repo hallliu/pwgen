@@ -20,6 +20,7 @@ func main() {
     setPw := flag.Bool("s", false, "Set/reset master password")
     defaultPath := os.Getenv("HOME") + "/.pwdb"
     pwFileName := flag.String("f", defaultPath, "Password database file, default ~/.pwdb")
+    flag.Parse()
 
     if *setPw {
         newMasterPw(*pwFileName)
