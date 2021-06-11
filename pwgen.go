@@ -11,7 +11,8 @@ import (
     "bufio"
     "strings"
     "regexp"
-    "code.google.com/archive/p/gopass"
+    "syscall"
+    "golang.org/x/term"
 )
 
 type pwList map[string]string
@@ -116,11 +117,13 @@ func getPwDb(pwFileName string) (pwList, string, error) {
 
     var mpw string
     for {
-        pw, _ := gopass.GetPass("Enter master password: ")
-        pwHash := sha256.Sum256([]byte(pw))
+        fmt.Printf("Enter master password: ")
+        pw, _ := term.ReadPassword(int(syscall.Stdin))
+        fmt.Println()
+        pwHash := sha256.Sum256(pw)
         pwId := hex.EncodeToString(pwHash[:8])
         if pwId == masterPwHash {
-            mpw = pw
+            mpw = string(pw)
             break
         }
     }
@@ -143,10 +146,12 @@ func newMasterPw(pwFileName string) (pwList, string, error) {
 
     var masterPw string
     for {
-        pw0, _ := gopass.GetPass("Enter new master password: ")
-        pw1, _ := gopass.GetPass("Verify new master password: ")
-        if pw0 == pw1 {
-            masterPw = pw0
+        fmt.Printf("Enter new master password: ")
+        pw0, _ := term.ReadPassword(int(syscall.Stdin))
+        fmt.Printf("\nVerify new master password: ")
+        pw1, _ := term.ReadPassword(int(syscall.Stdin))
+        if string(pw0) == string(pw1) {
+            masterPw = string(pw0)
             break
         }
     }
