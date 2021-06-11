@@ -11,7 +11,7 @@ import (
     "bufio"
     "strings"
     "regexp"
-    "code.google.com/p/gopass"
+    "code.google.com/archive/p/gopass"
 )
 
 type pwList map[string]string
