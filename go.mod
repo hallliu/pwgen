@@ -1,4 +1,4 @@
-module pwgen
+module github.com/hallliu/pwgen
 
 go 1.16
 
